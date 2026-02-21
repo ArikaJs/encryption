@@ -1,24 +1,25 @@
 {
-    "name": "@arikajs/encryption",
-    "version": "0.1.4",
-    "description": "Secure, application-level encryption for the ArikaJS framework.",
-    "license": "MIT",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "scripts": {
-        "build": "tsc -p tsconfig.json",
-        "clean": "rm -rf dist",
-        "prepare": "echo skip"
-    },
-    "files": [
-        "dist"
-    ],
-    "engines": {
-        "node": ">=20.0.0"
-    },
-    "dependencies": {},
-    "devDependencies": {
-        "@types/node": "^20.11.24",
-        "typescript": "^5.3.3"
-    }
+  "name": "@arikajs/encryption",
+  "version": "0.0.1",
+  "description": "Secure, application-level encryption for the ArikaJS framework.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "prepare": "echo skip"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  },
+  "author": "Prakash Tank"
 }
