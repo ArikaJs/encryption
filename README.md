@@ -219,6 +219,8 @@ Decrypts a payload. Options include:
 
 ---
 
+## 🏗 Architecture
+
 ```text
 encryption/
 ├── src/
@@ -247,23 +249,6 @@ This package:
 - Keeps security boring and safe
 
 ---
-
-## 🏗 Architecture
-
-```text
-encryption/
-├── src/
-│   ├── Contracts
-│   │   └── Encrypter.ts
-│   ├── Exceptions
-│   │   └── DecryptionException.ts
-│   ├── Encrypter.ts
-│   └── index.ts
-├── tests/
-├── package.json
-├── tsconfig.json
-└── README.md
-```
 
 ## 📄 License
 
