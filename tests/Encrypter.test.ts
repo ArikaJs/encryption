@@ -100,4 +100,50 @@ describe('Encrypter', () => {
         const signedWithOld = oldEncrypter.sign('old signature');
         assert.strictEqual(newEncrypter.verify(signedWithOld), 'old signature');
     });
+
+    it('can encrypt and decrypt with compression', () => {
+        const encrypter = new Encrypter(key);
+        const largeValue = 'A'.repeat(1000);
+
+        const encrypted = encrypter.encrypt(largeValue, { compress: true });
+        const decrypted = encrypter.decrypt(encrypted);
+
+        assert.strictEqual(decrypted, largeValue);
+    });
+
+    it('enforces TTL expiration', async () => {
+        const encrypter = new Encrypter(key);
+
+        // Use 1 for near-instant expiration
+        const encrypted = encrypter.encrypt('timely', { ttl: 1 });
+
+        assert.strictEqual(encrypter.decrypt(encrypted), 'timely');
+
+        // Wait for it to expire
+        await new Promise(resolve => setTimeout(resolve, 1100));
+
+        assert.throws(() => {
+            encrypter.decrypt(encrypted);
+        }, /expired/);
+    });
+
+    it('supports contextual encryption (AAD)', () => {
+        const encrypter = new Encrypter(key);
+        const context = 'user-123';
+
+        const encrypted = encrypter.encrypt('secret', { context });
+
+        // Success with correct context
+        assert.strictEqual(encrypter.decrypt(encrypted, { context }), 'secret');
+
+        // Fails with wrong context
+        assert.throws(() => {
+            encrypter.decrypt(encrypted, { context: 'user-456' });
+        });
+
+        // Fails with no context
+        assert.throws(() => {
+            encrypter.decrypt(encrypted);
+        });
+    });
 });

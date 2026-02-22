@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes, createHmac, timingSafeEqual } from 'crypto';
+import { deflateSync, inflateSync } from 'zlib';
 import { Encrypter as EncrypterContract } from './Contracts/Encrypter';
 import { DecryptionException } from './Exceptions/DecryptionException';
 
@@ -35,23 +36,44 @@ export class Encrypter implements EncrypterContract {
     /**
      * Encrypt the given value.
      */
-    public encrypt(value: any): string {
+    public encrypt(value: any, options: { serialize?: boolean, compress?: boolean, ttl?: number, context?: string } = {}): string {
         const iv = randomBytes(16);
-        // Always use the first key (current key) for encryption
         const cipher = createCipheriv(this.cipher, this.keys[0], iv);
 
-        const jsonValue = JSON.stringify(value);
-        let encrypted = cipher.update(jsonValue, 'utf8', 'base64');
-        encrypted += cipher.final('base64');
+        if (options.context) {
+            cipher.setAAD(Buffer.from(options.context));
+        }
+
+        const serialize = options.serialize !== false;
+        let data: string | Buffer;
+
+        if (serialize) {
+            data = JSON.stringify(value);
+        } else {
+            data = Buffer.isBuffer(value) ? value : String(value);
+        }
+
+        if (options.compress === true) {
+            data = deflateSync(Buffer.from(data));
+        }
+
+        let encrypted = cipher.update(data as any);
+        encrypted = Buffer.concat([encrypted, cipher.final()]);
 
         const tag = cipher.getAuthTag();
 
-        const payload = {
+        const payload: any = {
             iv: iv.toString('base64'),
-            value: encrypted,
+            value: encrypted.toString('base64'),
             tag: tag.toString('base64'),
-            v: 1, // Versioning
+            v: 1,
         };
+
+        if (options.compress) payload.c = true;
+        if (options.ttl) {
+            payload.exp = Date.now() + (options.ttl * 1000);
+        }
+        if (options.context) payload.aad = true;
 
         return Buffer.from(JSON.stringify(payload)).toString('base64');
     }
@@ -59,23 +81,45 @@ export class Encrypter implements EncrypterContract {
     /**
      * Decrypt the given value.
      */
-    public decrypt(payload: string): any {
+    public decrypt(payload: string, options: { unserialize?: boolean, context?: string } = {}): any {
         const jsonPayload = this.getJsonPayload(payload);
+
+        // Check for TTL expiration
+        if (jsonPayload.exp && Date.now() > jsonPayload.exp) {
+            throw new DecryptionException('The payload has expired.');
+        }
+
+        // Verify context requirements
+        if (jsonPayload.aad && !options.context) {
+            throw new DecryptionException('The payload requires a context for decryption.');
+        }
 
         const iv = Buffer.from(jsonPayload.iv, 'base64');
         const tag = Buffer.from(jsonPayload.tag, 'base64');
         const value = jsonPayload.value;
+        const compressed = jsonPayload.c === true;
 
         // Try decrypting with all available keys (support rotation)
         for (const key of this.keys) {
             try {
                 const decipher = createDecipheriv(this.cipher, key, iv);
+
+                if (options.context) {
+                    decipher.setAAD(Buffer.from(options.context));
+                }
+
                 decipher.setAuthTag(tag);
 
-                let decrypted = decipher.update(value, 'base64', 'utf8');
-                decrypted += decipher.final('utf8');
+                let decrypted = decipher.update(value, 'base64');
+                decrypted = Buffer.concat([decrypted, decipher.final()]);
 
-                return JSON.parse(decrypted);
+                let result: Buffer = decrypted;
+                if (compressed) {
+                    result = inflateSync(result);
+                }
+
+                const finalData = result.toString('utf8');
+                return options.unserialize === false ? finalData : JSON.parse(finalData);
             } catch (error) {
                 // Try next key
                 continue;

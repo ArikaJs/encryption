@@ -76,6 +76,42 @@ const data = encrypter.decrypt(token);
 
 Internally, objects are JSON-serialized automatically.
 
+### 🗜️ Optional Compression
+
+For large data (like long session strings or queue jobs), you can compress the payload before encryption to save space.
+
+```ts
+const encrypted = encrypter.encrypt(veryLargeObject, { compress: true });
+```
+
+### ⏳ Payload Expiration (TTL)
+
+You can create encrypted data that is only valid for a certain number of seconds.
+
+```ts
+// Valid for 5 minutes (300 seconds)
+const token = encrypter.encrypt('secret', { ttl: 300 });
+
+// After 5 minutes, decrypt() will throw a DecryptionException
+const data = encrypter.decrypt(token);
+```
+
+### 🔐 Contextual Encryption (AAD)
+
+Ensure the encrypted data is only used in the correct context (e.g., tying a token to a specific user). This uses **Additional Authenticated Data** to prevent payload reuse.
+
+```ts
+const token = encrypter.encrypt('sensitive', { context: 'user-id-123' });
+
+// This will succeed
+encrypter.decrypt(token, { context: 'user-id-123' });
+
+// This will throw even with the correct key!
+encrypter.decrypt(token, { context: 'user-id-456' });
+```
+
+---
+
 ### ✍️ Signed Payloads (Non-encrypted)
 
 Sometimes you want to ensure data isn't tampered with but don't need to keep it secret (e.g., verification tokens).
@@ -169,24 +205,17 @@ This package is a core dependency for:
 ### `new Encrypter(key: string | string[])`
 Creates a new encrypter instance. Accepts a single key or an array for rotation.
 
-### `encrypt(value: any): string`
-Encrypts a value and returns a base64 string payload.
+### `encrypt(value: any, options?: object): string`
+Encrypts a value. Options include:
+- `serialize`: (default: true)
+- `compress`: (default: false) uses zlib deflation
+- `ttl`: seconds until expiration
+- `context`: Additional Authenticated Data (AAD)
 
-### `decrypt(payload: string): any`
-Decrypts a payload and returns the original value.
-
-### `sign(value: any): string`
-Creates a signed (but not encrypted) payload.
-
-### `verify(payload: string): any`
-Verifies and returns the data from a signed payload.
-
-Throws if:
-- Payload is invalid
-- Payload is tampered
-- Signature is invalid
-- Key is incorrect
-- Algorithm version mismatch
+### `decrypt(payload: string, options?: object): any`
+Decrypts a payload. Options include:
+- `unserialize`: (default: true)
+- `context`: Must match the context used during encryption
 
 ---
 
@@ -207,15 +236,6 @@ encryption/
 ├── README.md
 └── LICENSE
 ```
-
----
-
-## 🚧 Planned (v1.x+)
-
-- 🔄 Key rotation support
-- 🧪 Encrypted payload versioning
-- 🔑 Multiple key support (fallback decryption)
-- 🧷 Signed-only (non-encrypted) payloads
 
 ---
 
