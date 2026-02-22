@@ -11,9 +11,10 @@ This package is framework-agnostic at runtime, but designed to integrate seamles
 ## ✨ Features
 
 - 🔐 **AES-256-GCM encryption** (modern & secure)
-- 🔑 **Single application key** (`APP_KEY`)
+- 🔑 **Multiple application keys** (support for key rotation)
 - 🧾 **Authenticated encryption** (tamper detection)
 - 🔄 **Encrypt / decrypt strings & JSON**
+- ✍️ **Signed-only payloads** (non-encrypted but authenticated)
 - 🧠 **Stateless design** (safe for queues & workers)
 - 🧩 **Framework service friendly**
 - 🟦 **TypeScript-first**
@@ -75,6 +76,36 @@ const data = encrypter.decrypt(token);
 
 Internally, objects are JSON-serialized automatically.
 
+### ✍️ Signed Payloads (Non-encrypted)
+
+Sometimes you want to ensure data isn't tampered with but don't need to keep it secret (e.g., verification tokens).
+
+```ts
+const signed = encrypter.sign({ email: 'user@example.com' });
+
+// "eyJ2YWx1ZSI6InsiZW1haWwiOiJ1c2VyQGV4YW1..."
+
+const data = encrypter.verify(signed);
+// { email: 'user@example.com' }
+```
+
+---
+
+## 🔄 Key Rotation
+
+You can pass an array of keys to the `Encrypter`. The first key will be used for encryption/signing, but all keys will be tried during decryption/verification.
+
+```ts
+const encrypter = new Encrypter([
+  'base64:new-primary-key...',
+  'base64:old-key-1...',
+  'base64:old-key-2...'
+]);
+
+// Decrypts data created with any of the 3 keys
+const data = encrypter.decrypt(oldPayload);
+```
+
 ---
 
 ## 🧠 Integration with ArikaJS
@@ -85,13 +116,13 @@ Internally, objects are JSON-serialized automatically.
 import { Encrypter } from '@arikajs/encryption';
 
 this.app.singleton('encrypter', () => {
-  const key = config('app.key');
+  const keys = config('app.keys'); // Array of keys from config
 
-  if (!key) {
+  if (!keys || keys.length === 0) {
     throw new Error('APP_KEY is not defined.');
   }
 
-  return new Encrypter(key);
+  return new Encrypter(keys);
 });
 ```
 
@@ -107,13 +138,15 @@ const value = encrypter.encrypt('hello');
 
 ## 🔒 Security Guarantees
 
-- Uses **AES-256-GCM**
-- Every payload includes:
+- Uses **AES-256-GCM** for encryption
+- Uses **HMAC-SHA256** for signing
+- Every encrypted payload includes:
   - Random IV (Initialization Vector)
   - Authentication tag
+  - Version identifier
 - Any tampering → automatic decryption failure
 - No weak or legacy algorithms
-- If data is modified, `decrypt()` will throw.
+- Uses timing-safe comparisons for signatures
 
 ---
 
@@ -124,7 +157,7 @@ This package is a core dependency for:
 | Package | Usage |
 | :--- | :--- |
 | `@arikajs/session` | Encrypted sessions |
-| `@arikajs/http` | Encrypted cookies |
+| `@arikajs/http` | Encrypted cookies / Signed URLs |
 | `@arikajs/queue` | Secure job payloads |
 | `@arikajs/auth` | Token encryption |
 | `@arikajs/mail` | Signed mail data |
@@ -133,19 +166,27 @@ This package is a core dependency for:
 
 ## 🧠 API Reference
 
-### `new Encrypter(key: string)`
-Creates a new encrypter instance.
+### `new Encrypter(key: string | string[])`
+Creates a new encrypter instance. Accepts a single key or an array for rotation.
 
-### `encrypt(value: string | object): string`
-Encrypts a value and returns a string payload.
+### `encrypt(value: any): string`
+Encrypts a value and returns a base64 string payload.
 
 ### `decrypt(payload: string): any`
 Decrypts a payload and returns the original value.
 
+### `sign(value: any): string`
+Creates a signed (but not encrypted) payload.
+
+### `verify(payload: string): any`
+Verifies and returns the data from a signed payload.
+
 Throws if:
 - Payload is invalid
 - Payload is tampered
+- Signature is invalid
 - Key is incorrect
+- Algorithm version mismatch
 
 ---
 
