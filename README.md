@@ -2,7 +2,7 @@
 
 `@arikajs/encryption` provides secure, application-level encryption for the ArikaJS framework.
 
-It is responsible for encrypting and decrypting sensitive data such as sessions, cookies, signed payloads, and internal framework values — similar in spirit to Laravel’s `Illuminate\Encryption`.
+It is responsible for encrypting and decrypting sensitive data such as sessions, cookies, signed payloads, and internal framework values — providing a clean, secure API.
 
 This package is framework-agnostic at runtime, but designed to integrate seamlessly with `@arikajs/foundation` via service providers.
 
@@ -221,20 +221,36 @@ Decrypts a payload. Options include:
 
 ## 🏗 Architecture
 
-```
+```text
 encryption/
 ├── src/
-│   ├── Encrypter.ts
-│   ├── Contracts/
+│   ├── Contracts
 │   │   └── Encrypter.ts
-│   ├── Exceptions/
+│   ├── Exceptions
 │   │   └── DecryptionException.ts
+│   ├── Encrypter.ts
 │   └── index.ts
 ├── tests/
 ├── package.json
 ├── tsconfig.json
-├── README.md
-└── LICENSE
+└── README.md
+```
+
+
+
+```text
+encryption/
+├── src/
+│   ├── Contracts
+│   │   └── Encrypter.ts
+│   ├── Exceptions
+│   │   └── DecryptionException.ts
+│   ├── Encrypter.ts
+│   └── index.ts
+├── tests/
+├── package.json
+├── tsconfig.json
+└── README.md
 ```
 
 ---
